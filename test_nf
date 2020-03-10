@@ -16,6 +16,7 @@ params.panel = 'RochePanCancer'
 params.pipelinename = 'SomaticEnrichment'
 params.expectedInsertSize = '150'
 params.sampleId = '20M02656'
+params.sequencing_centre = 'AWMGL'
 
 Channel
   .fromFilePairs(params.reads, flat: true) 
@@ -56,16 +57,18 @@ process removeadapters {
 trimmed_r1.into{
 	trimmed_r1_fqc
 	trimmed_r1_ubam
+	trimmed_r1_bam
 }
 
 trimmed_r2.into{
 	trimmed_r2_fqc
 	trimmed_r2_ubam
+	trimmed_r2_bam
 }
 
 
 
-process fastqc {
+process collate_fastqcmetrics {
 	input:
 	set val(id), file(r1_fastq) from trimmed_r1_fqc
 	set val(id), file(r2_fastq) from trimmed_r2_fqc
@@ -78,8 +81,8 @@ process fastqc {
 }
 
 
-
-process fastq2ubam {
+/*
+process convert_fastq2ubam {
 	
 	input:
 	set val(id), file(read1) from trimmed_r1_ubam
@@ -102,12 +105,33 @@ process fastq2ubam {
 	${params.expectedInsertSize} \
 	"""
 }
+*/
 
 
+process align_bamfiles {
 
+	input:
+	set val(id), file(read1) from trimmed_r1_bam
+	set val(id), file(read2) from trimmed_r2_bam
 
+	output:
+    file "${params.seqId}_${params.sampleId}_${laneId}.bam" into aligned_bam
+    file "${params.seqId}_${params.sampleId}_${laneId}.bam.bai" into aligned_bam_indexes
+    script:
+    laneId = read1.name.toString().tokenize('_').get(5)
+    
+    """
+	bwa mem \
+    -v 1 \
+    -t 12 \
+    -M \
+    -R '@RG\\tID:${params.sequencing_run}.${laneId}\\tCN:${params.sequencing_centre}\\tSM:${params.sampleId}\\tLB:${params.sequencing_run}\\tPL:ILLUMINA' \
+    ${params.reference_genome}\
+    $read1 \
+    $read2 | samtools view -Sb - | \
+    samtools sort -T /var/folders/59/6qr118qs6hv7gk0nz4lb7_6m0000gv/T/ -O bam > "${params.seqId}_${params.sampleId}_${laneId}.bam" 
+    samtools index "${params.seqId}_${params.sampleId}_${laneId}.bam"
+	"""
+}
 
-
-
-
-
+/* -p flag missing in bwa mem step */
