@@ -1,0 +1,66 @@
+#!/usr/bin/env nextflow
+
+
+params.reads = 'data/RochePanCancer/*/*_R{1,2}_001.fastq.gz'
+params.reference_genome = 'resources/human_g1k_v37.fasta'
+params.capturebed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_capture_targets.bed'
+params.primarybed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_primary_targets.bed'
+params.seqId = '200221_NB551319_0071_AH2HCJAFX2'
+params.chromosomes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "MT"]
+params.read1Adapter = 'AGATCGGAAGAGC'
+params.read2Adapter = 'AGATCGGAAGAGC' 
+params.worklistId = '20-958'
+params.sex = '2'
+params.referral = '2'
+params.panel = 'RochePanCancer'
+params.pipelinename = 'SomaticEnrichment'
+
+Channel
+  .fromFilePairs(params.reads, flat: true) 
+  .set { reads_ch }
+
+
+chromosomes_ch = Channel
+    .from( params.chromosomes)
+
+/*reads_ch.subscribe { println "$it"}*/
+
+
+
+process removeadapters {
+	input:
+    set val(id), file(read1), file(read2) from reads_ch 
+
+    output:
+    set val(id), file("${params.seqId}_${sampleId}_${laneId}_R1.fastq") into trimmed_r1
+    set val(id), file("${params.seqId}_${sampleId}_${laneId}_R2.fastq") into trimmed_r2
+
+    script:
+    laneId = read1.name.toString().tokenize('_').get(2)
+    sampleId = read1.name.toString().tokenize('_').get(0)
+
+    """
+    cutadapt.sh \
+        ${params.seqId} \
+        ${sampleId} \
+        ${laneId} \
+        ${read1} \
+        ${read2}\
+        ${params.read1Adapter} \
+        ${params.read2Adapter}
+    """
+}
+
+
+process fastqc {
+	input:
+	set val(id), file(r1_fastq) from trimmed_r1
+	set val(id), file(r2_fastq) from trimmed_r2
+
+	"""
+	
+	fastqc.sh ${r1_fastq} ${r2_fastq}
+
+	"""
+}
+
