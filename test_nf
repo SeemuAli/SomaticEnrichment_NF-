@@ -14,6 +14,8 @@ params.sex = '2'
 params.referral = '2'
 params.panel = 'RochePanCancer'
 params.pipelinename = 'SomaticEnrichment'
+params.expectedInsertSize = '150'
+params.sampleId = '20M02656'
 
 Channel
   .fromFilePairs(params.reads, flat: true) 
@@ -32,17 +34,17 @@ process removeadapters {
     set val(id), file(read1), file(read2) from reads_ch 
 
     output:
-    set val(id), file("${params.seqId}_${sampleId}_${laneId}_R1.fastq") into trimmed_r1
-    set val(id), file("${params.seqId}_${sampleId}_${laneId}_R2.fastq") into trimmed_r2
+    set val(id), file("${params.seqId}_${params.sampleId}_${laneId}_R1.fastq") into trimmed_r1
+    set val(id), file("${params.seqId}_${params.sampleId}_${laneId}_R2.fastq") into trimmed_r2
 
     script:
     laneId = read1.name.toString().tokenize('_').get(2)
-    sampleId = read1.name.toString().tokenize('_').get(0)
+
 
     """
     cutadapt.sh \
         ${params.seqId} \
-        ${sampleId} \
+        ${params.sampleId} \
         ${laneId} \
         ${read1} \
         ${read2}\
@@ -51,11 +53,22 @@ process removeadapters {
     """
 }
 
+trimmed_r1.into{
+	trimmed_r1_fqc
+	trimmed_r1_ubam
+}
+
+trimmed_r2.into{
+	trimmed_r2_fqc
+	trimmed_r2_ubam
+}
+
+
 
 process fastqc {
 	input:
-	set val(id), file(r1_fastq) from trimmed_r1
-	set val(id), file(r2_fastq) from trimmed_r2
+	set val(id), file(r1_fastq) from trimmed_r1_fqc
+	set val(id), file(r2_fastq) from trimmed_r2_fqc
 
 	"""
 	
@@ -63,4 +76,38 @@ process fastqc {
 
 	"""
 }
+
+
+
+process fastq2ubam {
+	
+	input:
+	set val(id), file(read1) from trimmed_r1_ubam
+	set val(id), file(read2) from trimmed_r2_ubam
+
+	output:
+	set val(id), file("${params.seqId}_${params.sampleId}_${laneId}_unaligned.bam") into unaligned_bams 
+	
+    script:
+    laneId = read1.name.toString().tokenize('_').get(5)
+	
+
+	"""
+	fastq_to_ubam.sh \
+	${read1} \
+	${read2} \
+	${params.sampleId} \
+	${params.worklistId} \
+	${params.panel} \
+	${params.expectedInsertSize} \
+	"""
+}
+
+
+
+
+
+
+
+
 

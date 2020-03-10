@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Christopher Medway AWMGS
+# Christopher Medway, Seemu Ali AWMGS
 # runs FASTQC for R1 & R2 for given sample/lane
 
 r1_fastq=$1
 r2_fastq=$2
 r1_prefix=$(echo "${r1_fastq//.fastq}")
 r2_prefix=$(echo "${r2_fastq//.fastq}")
-
-
-echo "Running FASTQC"
 
 mkdir -p FASTQC
 
