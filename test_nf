@@ -124,8 +124,9 @@ process align_bamfiles {
 	bwa mem \
     -v 1 \
     -t 12 \
+    -p \
     -M \
-    -R '@RG\\tID:${params.sequencing_run}.${laneId}\\tCN:${params.sequencing_centre}\\tSM:${params.sampleId}\\tLB:${params.sequencing_run}\\tPL:ILLUMINA' \
+    -R '@RG\\tID:${params.seqId}.${laneId}\\tCN:${params.sequencing_centre}\\tSM:${params.sampleId}\\tLB:${params.seqId}\\tPL:ILLUMINA' \
     ${params.reference_genome}\
     $read1 \
     $read2 | samtools view -Sb - | \
