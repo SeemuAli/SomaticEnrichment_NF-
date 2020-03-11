@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 
-params.reads = 'data/RochePanCancer/*/*_R{1,2}_001.fastq.gz'
+params.reads = 'data/RochePanCancer/20M02656/*_R{1,2}_001.fastq.gz'
 params.reference_genome = 'resources/human_g1k_v37.fasta'
 params.capturebed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_capture_targets.bed'
 params.primarybed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_primary_targets.bed'
@@ -17,6 +17,15 @@ params.pipelinename = 'SomaticEnrichment'
 params.expectedInsertSize = '150'
 params.sampleId = '20M02656'
 params.sequencing_centre = 'AWMGL'
+params.refdict = 'resources/human_g1k_v37.dict'
+params.refidx = 'resources/human_g1k_v37.fasta.fai'
+
+reference_genome = file(params.reference_genome)
+capture_bed = file(params.capturebed)
+refdict= file(params.refdict)
+refidx= file(params.refidx)
+
+
 
 Channel
   .fromFilePairs(params.reads, flat: true) 
@@ -69,6 +78,9 @@ trimmed_r2.into{
 
 
 process collate_fastqcmetrics {
+
+	 publishDir "results/fastqc/"
+	
 	input:
 	set val(id), file(r1_fastq) from trimmed_r1_fqc
 	set val(id), file(r2_fastq) from trimmed_r2_fqc
@@ -80,32 +92,6 @@ process collate_fastqcmetrics {
 	"""
 }
 
-
-/*
-process convert_fastq2ubam {
-	
-	input:
-	set val(id), file(read1) from trimmed_r1_ubam
-	set val(id), file(read2) from trimmed_r2_ubam
-
-	output:
-	set val(id), file("${params.seqId}_${params.sampleId}_${laneId}_unaligned.bam") into unaligned_bams 
-	
-    script:
-    laneId = read1.name.toString().tokenize('_').get(5)
-	
-
-	"""
-	fastq_to_ubam.sh \
-	${read1} \
-	${read2} \
-	${params.sampleId} \
-	${params.worklistId} \
-	${params.panel} \
-	${params.expectedInsertSize} \
-	"""
-}
-*/
 
 
 process align_bamfiles {
@@ -124,15 +110,138 @@ process align_bamfiles {
 	bwa mem \
     -v 1 \
     -t 12 \
-    -p \
     -M \
     -R '@RG\\tID:${params.seqId}.${laneId}\\tCN:${params.sequencing_centre}\\tSM:${params.sampleId}\\tLB:${params.seqId}\\tPL:ILLUMINA' \
-    ${params.reference_genome}\
+    $reference_genome \
     $read1 \
     $read2 | samtools view -Sb - | \
-    samtools sort -T /var/folders/59/6qr118qs6hv7gk0nz4lb7_6m0000gv/T/ -O bam > "${params.seqId}_${params.sampleId}_${laneId}.bam" 
+    samtools sort -T . -O bam > "${params.seqId}_${params.sampleId}_${laneId}.bam" 
     samtools index "${params.seqId}_${params.sampleId}_${laneId}.bam"
 	"""
 }
 
-/* -p flag missing in bwa mem step */
+
+
+/*
+process align_bamfiles2 {
+
+	input:
+	set val(id), file(read1) from trimmed_r1_ubam
+	set val(id), file(read2) from trimmed_r2_ubam
+
+	output:
+    file "${params.seqId}_${params.sampleId}_${laneId}.bam" into aligned_bam2
+    file "${params.seqId}_${params.sampleId}_${laneId}.bam.bai" into aligned_bam_indexes2
+    script:
+    laneId = read1.name.toString().tokenize('_').get(5)
+    
+    """
+	bwa2.sh \
+    ${params.seqId} \
+    ${laneId} \
+    ${params.sequencing_centre} \
+    ${params.sampleId} \
+    $reference_genome \
+    $read1 \
+    $read2 
+	"""
+}
+
+
+*/
+
+
+
+
+
+/*
+Channel 
+    aligned_bam.map { file ->
+        def key = file.name.toString().tokenize('_').get(0)
+        return tuple(key, file)
+    }
+    .groupTuple()
+    .set{grouped_bam_ch}
+
+
+
+
+process merge_and_removeduplicates {
+
+    input:
+    set key, file(samples) from  grouped_bam_ch
+
+
+    script:
+
+    """
+
+    echo --batch $key --input $samples
+
+    """
+}
+
+*/
+
+
+/*
+
+        publishDir "results/final_bams/"
+
+
+
+    output:
+    file("${params.seqId}_${key}_mdup.bam") into mdup_bam
+    file("${params.seqId}_${key}_mdup.bam.bai") into mdup_bam_index
+    file("${params.seqId}_${key}_MarkDuplicateMetrics.txt")
+    """
+    picard MarkDuplicates \
+    ${bams.collect { "I=$it" }.join()} \
+    O=${params.seqId}_${key}_mdup.bam \
+    METRICS_FILE=${params.seqId}_${key}_MarkDuplicateMetrics.txt \
+    CREATE_INDEX=true \
+    VALIDATION_STRINGENCY=SILENT \
+    MAX_RECORDS_IN_RAM=2000000 \
+    TMP_DIR= . \
+    QUIET=true \
+    VERBOSITY=ERROR
+    """
+}
+*/
+
+/*
+
+process merge_bams_and_remove_duplicates{
+
+        publishDir "results/final_bams/"
+
+    input:
+    set val(key), file(bams) from inital_bam_channel.map { file ->
+    def key = file.name.toString().tokenize('_').get(0)
+    return tuple(key, file)
+    }
+    .groupTuple()
+
+    set val(key2), file(bam_indexes) from inital_bam_indexes_channel.map { file ->
+    def key = file.name.toString().tokenize('_').get(0)
+    return tuple(key, file)
+    }
+    .groupTuple()
+
+    output:
+    file("${key}_markduplicates.bam") into mark_duplicates_bam_channel
+    file("${key}_markduplicates.bai") into mark_duplicates_bam_index_channel
+    file("${key}_markduplicate_metrics.txt")
+
+    """
+    picard MarkDuplicates \
+    ${bams.collect { "I=$it " }.join()} \
+    O=${key}_markduplicates.bam \
+    METRICS_FILE=${key}_markduplicate_metrics.txt \
+    CREATE_INDEX=true \
+    VALIDATION_STRINGENCY=SILENT \
+    MAX_RECORDS_IN_RAM=${params.picard_max_ram_records} \
+    TMP_DIR=${params.picard_temp_dir}
+    """
+*/
+

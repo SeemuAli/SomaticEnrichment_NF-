@@ -5,32 +5,22 @@ set -euo pipefail
 # Christopher Medway, Seemu Ali AWMGS
 # runs BWA-mem over given sample: input unaligned BAM output aligned BAM
 
-r1_fastq=$1
-r2_fastq=$2
-reference_genome=$3
-seqId=$4
-laneId=$5
-sequencing_centre=$6
-sample_id=$7
+seqId=$1
+laneId=$2
+sequencing_centre=$3
+sampleId=$4
+reference_genome=$5
+read1=$6
+read2=$7
 
-general_Id=$(echo "${r1_fastq//_R1.fastq}")
-
-	bwa mem \
+bwa mem \
+    -v 1 \
     -t 12 \
     -p \
-    -v 1 \
     -M \
+    -R "@RG\\tID:"$seqId"."$laneId"\\tCN:"$sequencing_centre"\\tSM:"$sampleId"\\tLB:"$seqId"\\tPL:ILLUMINA" \
     $reference_genome \
-    $r1_fastq \
-    $r2_fastq \
-    > tes.sam 
-
-
-
-    #| samtools view -Sb - | \
-    #samtools sort -T /var/folders/59/6qr118qs6hv7gk0nz4lb7_6m0000gv/T/ -O bam > "$general_Id".bam \
-    #samtools index "$general_Id".bam
-
-
-
-
+    $read1 \
+    $read2 | samtools view -Sb - | \
+    samtools sort -T . -O bam > ""$seqId"_"$sampleId"_"$laneId".bam" 
+    samtools index ""$seqId"_"$sampleId"_"$laneId".bam"

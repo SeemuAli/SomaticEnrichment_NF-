@@ -13,7 +13,7 @@ mkdir -p FASTQC
 
 # consider adding --adapter to command
 fastqc \
-    --dir /var/folders/59/6qr118qs6hv7gk0nz4lb7_6m0000gv/T/ \
+    --dir . \
     --threads 12 \
     --extract \
     --quiet \
