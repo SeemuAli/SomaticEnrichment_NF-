@@ -209,20 +209,20 @@ process merge_and_removeduplicates {
 }
 */
 
-/*
+
 
 process merge_bams_and_remove_duplicates{
 
         publishDir "results/final_bams/"
 
     input:
-    set val(key), file(bams) from inital_bam_channel.map { file ->
+    set val(key), file(bams) from aligned_bam.map { file ->
     def key = file.name.toString().tokenize('_').get(0)
     return tuple(key, file)
     }
     .groupTuple()
 
-    set val(key2), file(bam_indexes) from inital_bam_indexes_channel.map { file ->
+    set val(key2), file(bam_indexes) from aligned_bam_indexes.map { file ->
     def key = file.name.toString().tokenize('_').get(0)
     return tuple(key, file)
     }
@@ -240,8 +240,8 @@ process merge_bams_and_remove_duplicates{
     METRICS_FILE=${key}_markduplicate_metrics.txt \
     CREATE_INDEX=true \
     VALIDATION_STRINGENCY=SILENT \
-    MAX_RECORDS_IN_RAM=${params.picard_max_ram_records} \
-    TMP_DIR=${params.picard_temp_dir}
+    MAX_RECORDS_IN_RAM=2000000 \
+    TMP_DIR= . 
     """
-*/
+}
 
