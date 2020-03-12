@@ -3,27 +3,39 @@
 
 params.reads = 'data/RochePanCancer/20M02656/*_R{1,2}_001.fastq.gz'
 params.reference_genome = 'resources/human_g1k_v37.fasta'
+params.refidx = 'resources/human_g1k_v37.fasta.fai'
+params.refdict = 'resources/human_g1k_v37.dict'
 params.capturebed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_capture_targets.bed'
 params.primarybed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_primary_targets.bed'
 params.seqId = '200221_NB551319_0071_AH2HCJAFX2'
 params.chromosomes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "MT"]
 params.read1Adapter = 'AGATCGGAAGAGC'
 params.read2Adapter = 'AGATCGGAAGAGC' 
+params.minimiumCoverage='250,135'
+params.expectedInsertSize = '150'
+params.padding='250'
+params.minBQS='10'
+params.minMQS='20'
+
+
+
+
 params.worklistId = '20-958'
 params.sex = '2'
 params.referral = '2'
 params.panel = 'RochePanCancer'
 params.pipelinename = 'SomaticEnrichment'
-params.expectedInsertSize = '150'
 params.sampleId = '20M02656'
 params.sequencing_centre = 'AWMGL'
-params.refdict = 'resources/human_g1k_v37.dict'
-params.refidx = 'resources/human_g1k_v37.fasta.fai'
+
 
 reference_genome = file(params.reference_genome)
+refidx = file(params.refidx)
+refdict = file(params.refdict)
 capture_bed = file(params.capturebed)
-refdict= file(params.refdict)
-refidx= file(params.refidx)
+primary_bed = file(params.primarybed)
+
+
 
 
 
@@ -217,31 +229,66 @@ process merge_bams_and_remove_duplicates{
 
     input:
     set val(key), file(bams) from aligned_bam.map { file ->
-    def key = file.name.toString().tokenize('_').get(0)
+    def key = file.name.toString().tokenize('_').get(4)
     return tuple(key, file)
     }
     .groupTuple()
 
     set val(key2), file(bam_indexes) from aligned_bam_indexes.map { file ->
-    def key = file.name.toString().tokenize('_').get(0)
+    def key = file.name.toString().tokenize('_').get(4)
     return tuple(key, file)
     }
     .groupTuple()
 
     output:
-    file("${key}_markduplicates.bam") into mark_duplicates_bam_channel
-    file("${key}_markduplicates.bai") into mark_duplicates_bam_index_channel
-    file("${key}_markduplicate_metrics.txt")
+    file("${params.seqId}_${key}.bam") into mark_duplicates_bam_channel
+    file("${params.seqId}_${key}.bai") into mark_duplicates_bam_index_channel
+    file("${params.seqId}_${key}_markduplicate_metrics.txt")
 
     """
     picard MarkDuplicates \
     ${bams.collect { "I=$it " }.join()} \
-    O=${key}_markduplicates.bam \
-    METRICS_FILE=${key}_markduplicate_metrics.txt \
+    O=${params.seqId}_${key}.bam \
+    METRICS_FILE=${params.seqId}_${key}_markduplicate_metrics.txt \
     CREATE_INDEX=true \
     VALIDATION_STRINGENCY=SILENT \
     MAX_RECORDS_IN_RAM=2000000 \
     TMP_DIR= . 
     """
 }
+
+
+
+/*
+process post_alignment_QC {
+
+input: 
+
+output: 
+"${params.panel}_capture.interval_list"
+"${params.panel}_primary.interval_list"
+"${params.seqId}_$sampleId_AlignmentSummaryMetrics.txt"
+"${params.seqId}_$sampleId_InsertMetrics.txt"
+"${params.seqId}_$sampleId_HsMetrics.txt"
+
+script:
+
+
+"""
+post_alignment_qc.sh \
+
+${params.seqId} \
+${params.sampleId} \
+${params.panel} \
+${params.minimumCoverage} \
+$capture_bed \
+$primary_bed \
+${params.padding} \
+${params.minBQS} \
+${params.minMQS} \
+$reference_genome \
+$refdict
+"""
+*/
+
 
