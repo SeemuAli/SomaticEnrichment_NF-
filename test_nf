@@ -166,63 +166,6 @@ process align_bamfiles2 {
 
 
 
-/*
-Channel 
-    aligned_bam.map { file ->
-        def key = file.name.toString().tokenize('_').get(0)
-        return tuple(key, file)
-    }
-    .groupTuple()
-    .set{grouped_bam_ch}
-
-
-
-
-process merge_and_removeduplicates {
-
-    input:
-    set key, file(samples) from  grouped_bam_ch
-
-
-    script:
-
-    """
-
-    echo --batch $key --input $samples
-
-    """
-}
-
-*/
-
-
-/*
-
-        publishDir "results/final_bams/"
-
-
-
-    output:
-    file("${params.seqId}_${key}_mdup.bam") into mdup_bam
-    file("${params.seqId}_${key}_mdup.bam.bai") into mdup_bam_index
-    file("${params.seqId}_${key}_MarkDuplicateMetrics.txt")
-    """
-    picard MarkDuplicates \
-    ${bams.collect { "I=$it" }.join()} \
-    O=${params.seqId}_${key}_mdup.bam \
-    METRICS_FILE=${params.seqId}_${key}_MarkDuplicateMetrics.txt \
-    CREATE_INDEX=true \
-    VALIDATION_STRINGENCY=SILENT \
-    MAX_RECORDS_IN_RAM=2000000 \
-    TMP_DIR= . \
-    QUIET=true \
-    VERBOSITY=ERROR
-    """
-}
-*/
-
-
-
 process merge_bams_and_remove_duplicates{
 
         publishDir "results/final_bams/"
@@ -259,36 +202,40 @@ process merge_bams_and_remove_duplicates{
 
 
 
-/*
+
 process post_alignment_QC {
 
-input: 
+    input: 
 
-output: 
-"${params.panel}_capture.interval_list"
-"${params.panel}_primary.interval_list"
-"${params.seqId}_$sampleId_AlignmentSummaryMetrics.txt"
-"${params.seqId}_$sampleId_InsertMetrics.txt"
-"${params.seqId}_$sampleId_HsMetrics.txt"
+    file(bam) from mark_duplicates_bam_channel
+    file(bai) from mark_duplicates_bam_index_channel
 
-script:
+    output: 
 
+    "${params.seqId}_${params.sampleId}_AlignmentSummaryMetrics.txt"
+    "${params.seqId}_${params.sampleId}_InsertMetrics.txt"
+    "${params.seqId}_${params.sampleId}_HsMetrics.txt"
 
-"""
-post_alignment_qc.sh \
+    script:
+    sampleId = bam.name.toString().tokenize('_').get(4)
 
-${params.seqId} \
-${params.sampleId} \
-${params.panel} \
-${params.minimumCoverage} \
-$capture_bed \
-$primary_bed \
-${params.padding} \
-${params.minBQS} \
-${params.minMQS} \
-$reference_genome \
-$refdict
-"""
-*/
+    """
+    post_alignment_qc.sh \
+    ${params.seqId} \
+    ${params.sampleId} \
+    ${params.panel} \
+    ${params.minimumCoverage} \
+    $capture_bed \
+    $primary_bed \
+    ${params.padding} \
+    ${params.minBQS} \
+    ${params.minMQS} \
+    $reference_genome \
+    $refdict
+    """
+}
+
+/*"${params.panel}_capture.interval_list"
+"${params.panel}_primary.interval_list" */
 
 

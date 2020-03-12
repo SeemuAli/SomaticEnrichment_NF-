@@ -13,8 +13,11 @@ vendorPrimaryBed=$6
 padding=$7
 minBQS=$8
 minMQS=$9
-reference_genome=$10
-refdict=$11
+reference_genome=${10}
+refdict=${11}
+
+echo $reference_genome
+
 
 #Convert capture BED to interval_list for later
 picard BedToIntervalList \
@@ -45,14 +48,17 @@ picard CollectInsertSizeMetrics \
     TMP_DIR= .
 
 #HsMetrics: capture & pooling performance
-picard.jar CollectHsMetrics \
+picard CollectHsMetrics \
      I="$seqId"_"$sampleId".bam \
      O="$seqId"_"$sampleId"_HsMetrics.txt \
      R=$reference_genome \
      BAIT_INTERVALS="$panel"_capture.interval_list \
      TARGET_INTERVALS="$panel"_primary.interval_list \
      MAX_RECORDS_IN_RAM=2000000 \
-     TMP_DIR=/state/partition1/tmpdir \
+     TMP_DIR= . \
      MINIMUM_MAPPING_QUALITY=$minMQS \
      MINIMUM_BASE_QUALITY=$minBQS \
      CLIP_OVERLAPPING_READS=false
+
+
+
