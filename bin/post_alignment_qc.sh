@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Christopher Medway AWMGS
+# Christopher Medway, Seemu Ali AWMGS
 # generation of PICARD metrics for each sample 
 
 seqId=$1

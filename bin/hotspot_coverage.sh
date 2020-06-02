@@ -14,25 +14,27 @@ vendorCaptureBed=$7
 padding=$8
 minBQS=$9
 minMQS=${10}
-gatk3=${11}
+$bedtools_genome={11}
+$reference_genome={12}
+
 
 # minimumCoverage to array COV
 IFS=',' read -r -a COV <<< "${minimumCoverage}"
 
 # add given padding to vendor bedfile
-/share/apps/bedtools-distros/bedtools-2.26.0/bin/bedtools \
+bedtools \
     slop \
     -i $vendorCaptureBed \
     -b $padding \
-    -g /share/apps/bedtools-distros/bedtools-2.26.0/genomes/human.hg19.genome > vendorCaptureBed_100pad.bed
+    -g $bedtools_genome > vendorCaptureBed_100pad.bed
 
 # generate per-base coverage: variant detection sensitivity
-/share/apps/jre-distros/jre1.8.0_131/bin/java -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Djava.io.tmpdir=/state/partition1/tmpdir -Xmx4g -jar $gatk3 \
+gatk3 \
     -T DepthOfCoverage \
-    -R /state/partition1/db/human/gatk/2.8/b37/human_g1k_v37.fasta \
-    -I /data/results/$seqId/$panel/$sampleId/"$seqId"_"$sampleId".bam \
+    -R $reference_genome \
+    -I "$seqId"_"$sampleId".bam \
     -L vendorCaptureBed_100pad.bed \
-    -o /data/results/$seqId/$panel/$sampleId/"$seqId"_"$sampleId"_DepthOfCoverage \
+    -o "$seqId"_"$sampleId"_DepthOfCoverage \
     --countType COUNT_FRAGMENTS \
     --minMappingQuality $minMQS \
     --minBaseQuality $minBQS \
@@ -42,20 +44,21 @@ IFS=',' read -r -a COV <<< "${minimumCoverage}"
     -dt NONE
 
 # reformat depth file
-sed 's/:/\t/g' /data/results/$seqId/$panel/$sampleId/"$seqId"_"$sampleId"_DepthOfCoverage \
+# /data/results/$seqId/$panel/$sampleId/ 
+sed 's/:/\t/g' "$seqId"_"$sampleId"_DepthOfCoverage \
     | grep -v "^Locus" \
     | sort -k1,1 -k2,2n \
-    | /share/apps/htslib-distros/htslib-1.4.1/bgzip > /data/results/$seqId/$panel/$sampleId/"$seqId"_"$sampleId"_DepthOfCoverage.gz
+    | bgzip > "$seqId"_"$sampleId"_DepthOfCoverage.gz
 
 # tabix index depth file
-/share/apps/htslib-distros/htslib-1.4.1/tabix -b 2 -e 2 -s 1 /data/results/$seqId/$panel/$sampleId/"$seqId"_"$sampleId"_DepthOfCoverage.gz
+tabix -b 2 -e 2 -s 1 "$seqId"_"$sampleId"_DepthOfCoverage.gz
 
 # loop over each depth threshold (i.e. 250x, 135x)
 for depth in "${COV[@]}"
 do
     echo $depth
 
-    hscov_outdir=/data/results/$seqId/$panel/$sampleId/hotspot_coverage_"$depth"x/
+    hscov_outdir=hotspot_coverage_"$depth"x/
 
     # loop over referral bedfiles and generate coverage report 
     if [ -d /data/diagnostics/pipelines/$pipelineName/$pipelineName-$pipelineVersion/$panel/hotspot_coverage ];then

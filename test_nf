@@ -5,19 +5,18 @@ params.reads = 'data/RochePanCancer/20M02656/*_R{1,2}_001.fastq.gz'
 params.reference_genome = 'resources/human_g1k_v37.fasta'
 params.refidx = 'resources/human_g1k_v37.fasta.fai'
 params.refdict = 'resources/human_g1k_v37.dict'
+params.bedtools_genome = 'resources/human.hg19.genome'
 params.capturebed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_capture_targets.bed'
 params.primarybed = 'config/RochePanCancer/180702_HG19_PanCancer_EZ_primary_targets.bed'
 params.seqId = '200221_NB551319_0071_AH2HCJAFX2'
 params.chromosomes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y", "MT"]
 params.read1Adapter = 'AGATCGGAAGAGC'
 params.read2Adapter = 'AGATCGGAAGAGC' 
-params.minimiumCoverage='250,135'
+params.minimiumCoverage="250, 135"
 params.expectedInsertSize = '150'
 params.padding='250'
 params.minBQS='10'
 params.minMQS='20'
-
-
 
 
 params.worklistId = '20-958'
@@ -25,11 +24,13 @@ params.sex = '2'
 params.referral = '2'
 params.panel = 'RochePanCancer'
 params.pipelinename = 'SomaticEnrichment'
+params.pipelineversion = '1.2.0'
 params.sampleId = '20M02656'
 params.sequencing_centre = 'AWMGL'
 
 
 reference_genome = file(params.reference_genome)
+bedtools_genome = file(params.bedtools_genome)
 refidx = file(params.refidx)
 refdict = file(params.refdict)
 capture_bed = file(params.capturebed)
@@ -134,38 +135,6 @@ process align_bamfiles {
 
 
 
-/*
-process align_bamfiles2 {
-
-	input:
-	set val(id), file(read1) from trimmed_r1_ubam
-	set val(id), file(read2) from trimmed_r2_ubam
-
-	output:
-    file "${params.seqId}_${params.sampleId}_${laneId}.bam" into aligned_bam2
-    file "${params.seqId}_${params.sampleId}_${laneId}.bam.bai" into aligned_bam_indexes2
-    script:
-    laneId = read1.name.toString().tokenize('_').get(5)
-    
-    """
-	bwa2.sh \
-    ${params.seqId} \
-    ${laneId} \
-    ${params.sequencing_centre} \
-    ${params.sampleId} \
-    $reference_genome \
-    $read1 \
-    $read2 
-	"""
-}
-
-
-*/
-
-
-
-
-
 process merge_bams_and_remove_duplicates{
 
         publishDir "results/final_bams/"
@@ -201,14 +170,26 @@ process merge_bams_and_remove_duplicates{
 }
 
 
+mark_duplicates_bam_channel.into{
+    bam_QC
+    bam_cov
+}
+
+
+mark_duplicates_bam_index_channel.into{
+    bai_QC
+    bai_cov
+}
+
+
 
 
 process post_alignment_QC {
 
     input: 
 
-    file(bam) from mark_duplicates_bam_channel
-    file(bai) from mark_duplicates_bam_index_channel
+    file(bam) from bam_QC
+    file(bai) from bai_QC
 
     output: 
 
@@ -224,7 +205,7 @@ process post_alignment_QC {
     ${params.seqId} \
     ${params.sampleId} \
     ${params.panel} \
-    ${params.minimumCoverage} \
+    ${params.minimiumCoverage} \
     $capture_bed \
     $primary_bed \
     ${params.padding} \
@@ -237,5 +218,6 @@ process post_alignment_QC {
 
 /*"${params.panel}_capture.interval_list"
 "${params.panel}_primary.interval_list" */
+
 
 
