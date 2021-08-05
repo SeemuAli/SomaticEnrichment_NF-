@@ -10,14 +10,12 @@ The nextflow pipeline was developed to parrelise current Pancancer pipeline at A
 ### Code Style
 Standard.
 
-
 ### Requirements
 
-nf_pan.yml provided with all requirement to set up a conda environment. 
+nf_pan.yml provided with all requirements to set up a conda environment. 
 
-### Installation & Run 
-Install nextflow 
-clone the repositrory, enter the following command on terminal:
+### Install & Run 
+Install nextflow, clone the git repositrory and enter the following command on terminal:
 nextflow run SomaticEnrichment_nf.nf inn the run directory with all sample fastQc's
 
 ### Tests
