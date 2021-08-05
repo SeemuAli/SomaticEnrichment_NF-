@@ -2,9 +2,6 @@
 
 Next flow PanCancer pipeline at AWMGS 
 Project title
-# Creating a bed file from LRG xml data
-MSc BIOL68400 bioinformatics course group work
-
 
 ### Purpose
 The nextflow pipeline was developed to parrelise current Pancancer pipeline at AWMGS for eas of troubleshooting, development and improve speed. 
